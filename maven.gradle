@@ -1,0 +1,184 @@
+// 动态读取local.properties
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+def snapshot_url = properties.getProperty("SNAPSHOT_REPOSITORY_URL")
+def release_url = properties.getProperty("RELEASE_REPOSITORY_URL")
+
+def nexus_username = properties.getProperty("NEXUS_USERNAME")
+def nexus_password = properties.getProperty("NEXUS_PASSWORD")
+
+def gpg_key_id = properties.getProperty("GPG_KEYID")
+def gpg_password = properties.getProperty("GPG_PASSWORD")
+def gpg_secret_key_ring_file = properties.getProperty("GPG_SECRETKEYRINGFILE")
+
+println("<------------ ${project.name} ${libVersion} ------------>")
+
+// 配置GPG密钥
+gradle.taskGraph.whenReady { taskGraph ->
+    if (taskGraph.allTasks.any { it instanceof Sign }) {
+        allprojects { ext."signing.keyId" = gpg_key_id }
+        allprojects { ext."signing.secretKeyRingFile" = gpg_secret_key_ring_file }
+        allprojects { ext."signing.password" = gpg_password }
+    }
+}
+
+
+private void addDependency(Project project, def dependenciesNode, Dependency dep, String scope) {
+    if (dep.group == null || dep.version == null || dep.name == null || dep.name == "unspecified") {
+        return
+    }
+
+    final dependencyNode = dependenciesNode.appendNode('dependency')
+    dependencyNode.appendNode('scope', scope)
+
+    if (dep.version == 'unspecified') {
+        // 检测 module 中的 dependencies 是否有源码依赖
+        // 如果是源码依赖，而且没有在 config 中配置 remotePath，
+        // 那么发布到仓库，其他地方依赖该库时会找不到源码的那个库
+        println "publish -> module(unspecified) <${dep.group}:${dep.name}:${dep.version}>"
+        if (project.ext.groupId || project.ext.version) {
+            throw new GradleException("The module of <" + dep.name + "> should set groupId & version.")
+        }
+        // 源码依赖，但配置了 remotePath，让 pom 中写入 remotePath
+        println("publish -> module(wrapped) <${project.ext.groupId}:${name}:${project.ext.version}>")
+
+        dependencyNode.appendNode('groupId', project.ext.pomGroupID)
+        dependencyNode.appendNode('artifactId', dep.name)
+        dependencyNode.appendNode('version', project.ext.pomVersion)
+    } else {
+        dependencyNode.appendNode('groupId', dep.group)
+        dependencyNode.appendNode('artifactId', dep.name)
+        dependencyNode.appendNode('version', dep.version)
+        println("publish -> library <${dep.group}:${dep.name}:${dep.version}>")
+    }
+
+    if (!dep.transitive) {
+        // In case of non transitive dependency,
+        // all its dependencies should be force excluded from them POM file
+        final exclusionNode = dependencyNode.appendNode('exclusions').appendNode('exclusion')
+        exclusionNode.appendNode('groupId', '*')
+        exclusionNode.appendNode('artifactId', '*')
+    } else if (!dep.properties.excludeRules.empty) {
+        // For transitive with exclusions, all exclude rules should be added to the POM file
+        final exclusions = dependencyNode.appendNode('exclusions')
+        dep.properties.excludeRules.each { ExcludeRule rule ->
+            final exclusionNode = exclusions.appendNode('exclusion')
+            exclusionNode.appendNode('groupId', rule.group ?: '*')
+            exclusionNode.appendNode('artifactId', rule.module ?: '*')
+        }
+    }
+}
+
+publishing {
+    publications {
+        customPush(MavenPublication) {
+            // GroupId
+            if (project.hasProperty("libGroupId")) {
+                groupId libGroupId
+            }
+
+            // ArtifactId
+            if (project.hasProperty("libArtifactId")) {
+                artifactId libArtifactId
+            }
+
+            // Version（如果是上传到快照仓库，libVersion末尾加上：-SNAPSHOT）
+            if (project.hasProperty("libVersion")) {
+                version libVersion
+            }
+
+            pom {
+                if (project.hasProperty("libPackaging")) {
+                    packaging libPackaging
+                } else {
+                    packaging isAndroidLibrary() ? 'aar' : 'jar'
+                }
+
+                // pom.xml - name
+                if (project.hasProperty("libArtifactId")) {
+                    name = libArtifactId
+                }
+
+                // 可选，库描述
+                if (project.hasProperty("libDesc")) {
+                    description = libDesc
+                }
+
+                // 可选，库主页
+                if (project.hasProperty("websiteUrl")) {
+                    url = websiteUrl
+                }
+
+                // 软件开源协议，现在一般都是Apache License2.0
+                licenses {
+                    license {
+                        if (project.hasProperty("licenseName")) {
+                            name = licenseName
+                            url = licenseUrl
+                        }
+                    }
+                }
+
+                // 填写开发者基本信息
+                developers {
+                    developer {
+                        if (project.hasProperty("developerId") && project.hasProperty("developerName")
+                                && project.hasProperty("developerEmail")) {
+                            id = developerId
+                            name = developerName
+                            email = developerEmail
+                        }
+                    }
+                }
+
+                // 软件配置
+                scm {
+                    if (project.hasProperty("scmConnection") && project.hasProperty("scmDeveloperConnection")
+                            && project.hasProperty("websiteUrl")) {
+                        connection = scmConnection
+                        developerConnection = scmDeveloperConnection
+                        url = websiteUrl
+                    }
+                }
+                //远程依赖
+                withXml {
+                    def dependenciesNode = asNode().getAt('dependencies')[0] ?:
+                            asNode().appendNode('dependencies')
+
+                    configurations.api.getDependencies().each {
+                        dep -> addDependency(project, dependenciesNode, dep, "compile")
+                    }
+                    configurations.implementation.getDependencies().each {
+                        dep -> addDependency(project, dependenciesNode, dep, "runtime")
+                    }
+                }
+            }
+        }
+    }
+
+
+    repositories {
+        maven {
+            // 快照仓库（不需要审核，不能商业使用）
+            if (libVersion.endsWith('-SNAPSHOT')) {
+                println("<------------ push to maven central snapshot ------------>")
+                name "snapshots"
+                url snapshot_url
+            } else { // 发布仓库
+                println("<------------ push to maven central release ------------>")
+                name "releases"
+                url release_url
+            }
+            credentials {
+                username = nexus_username
+                password = nexus_password
+            }
+        }
+    }
+}
+
+// 作者签名 signing 必须在 publishing 配置之后
+signing {
+    sign publishing.publications.customPush
+}

@@ -1,0 +1,18 @@
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+
+// 生成maven配置
+apply from: '../maven.gradle'
+
+
+// 生成JavaDocs
+apply from: '../javadocs.gradle'
+
+task sdk {
+    doLast {
+        println "Release ${version}"
+    }
+}
+
+sdk.dependsOn(publishing)

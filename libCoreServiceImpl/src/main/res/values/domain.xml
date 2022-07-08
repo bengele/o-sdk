@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ntt_api">https://gw.benewtech.cn/</string>
+    <string name="ntt_api_demo">https://gw-demo.benewtech.cn/</string>
+</resources>

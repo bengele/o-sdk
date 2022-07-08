@@ -1,0 +1,153 @@
+// 是否Java Library
+def isJavaLibrary() {
+    if (plugins.hasPlugin("java-library") || project.hasProperty("java")) {
+        return true
+    }
+    return false
+}
+
+// 是否Android Library
+def isAndroidLibrary() {
+    if (plugins.hasPlugin("com.android.library") || project.hasProperty("android")) {
+        return true
+    }
+    return false
+}
+
+// 打包Android - classes.jar
+task classJar(type: Jar) {
+    if (project.hasProperty("zipFile")) {
+        from zipTree(file(zipFile))
+        destinationDirectory = file("build")
+    }
+}
+
+// 打包(Android / Java) - sources.jar
+task javaSourcesJar(type: Jar) {
+    //noinspection GroovyAccessibility
+    archiveClassifier = 'sources'
+    if (isAndroidLibrary()) {
+        println "<====== Android Library SourceJar ======>"
+        from android.sourceSets.main.java.srcDirs
+    } else {
+        println "<====== Java Library SourceJar ======>"
+        from sourceSets.main.java.srcDirs
+    }
+}
+
+
+
+publishing {
+    publications {
+        customPush(MavenPublication) {
+            // 生成jar / aar、javadoc.jar、source.jar
+            if (isAndroidLibrary()) {
+                // Android libraries
+                println("<====== JavaDoc For Android Library, Java Version: " + JavaVersion.current().getMajorVersion() + " ======>")
+                // 打包Android - javadoc.jar
+//                task androidJavadocs(type: Javadoc) {
+//                    source = android.sourceSets.main.java.srcDirs
+//                    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+//                }
+
+                task androidJavadocsJar(type: Jar) {
+                    archiveClassifier = 'javadoc'
+                }
+
+                // 闭包任务
+                artifacts {
+                    if (project.hasProperty("libPackaging") && libPackaging == 'jar') {
+                        println "<====== Android Library ClassJar ======>"
+                        artifact(classJar) // jar
+                    } else {
+                        println "<====== Android Library MakeAAR ======>"
+                        artifact("$buildDir/outputs/aar/${project.name}-release.aar") // aar
+                    }
+                    artifact(javaSourcesJar)
+                    artifact(androidJavadocsJar)
+                }
+
+
+
+                // 如果不需要安卓 jar/aar 的doc文档，完全可以去除以下脚本，比较耗时且鸡肋！
+//                android.libraryVariants.all { variant ->
+//                    if (variant.name == 'release') {
+//                        // 只需release的javadoc
+//                        task("generate${variant.name.capitalize()}Javadoc", type: Javadoc) {
+//
+//                            title "API Documentation (${project.android.defaultConfig.versionName})"
+//                            group "ApiDoc"
+//                            description "Generates Javadoc for $variant.name."
+//
+//                            ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
+//                            source = variant.sourceSets.collect { it.java.sourceFiles }.inject { m, i -> m + i }
+//
+//                            doFirst {
+//                                classpath = project.files(variant.javaCompileProvider.get().classpath.files,
+//                                        project.android.getBootClasspath())
+//                            }
+//
+//                            options {
+//                                encoding "UTF-8"
+//                                charSet 'UTF-8'
+//                                author true
+//                                version true
+//                                if (project.hasProperty("libName")) {
+//                                    title libName
+//                                }
+//                            }
+//
+//                            def javaDocsLink
+//                            if (JavaVersion.current().getMajorVersion() == "11") {
+//                                javaDocsLink = "https://docs.oracle.com/en/java/javase/11/docs/api/"
+//                            } else {
+//                                javaDocsLink = String.format("https://docs.oracle.com/javase/%s/docs/api/",
+//                                        JavaVersion.current().getMajorVersion())
+//                            }
+//                            options.links(javaDocsLink)
+//
+//                            if (JavaVersion.current().isJava8Compatible() || JavaVersion.current().isJava11Compatible()) {
+//                                options.addStringOption('Xdoclint:none', '-quiet')
+//                            }
+//
+//                            exclude '**/BuildConfig.java'
+//                            exclude '**/R.java'
+//                        }
+//                        task("javadoc${variant.name.capitalize()}Jar", type: Jar,
+//                                dependsOn: "generate${variant.name.capitalize()}Javadoc") {
+//                            // 打包javadoc的jar包
+//                            getArchiveClassifier().value('javadoc')
+//                            from tasks.getByName("generate${variant.name.capitalize()}Javadoc").destinationDir
+//                        }
+//
+//                        artifact(tasks.getByName("javadoc${variant.name.capitalize()}Jar"))
+//                    }
+//                }
+
+            } else if (isJavaLibrary()) {
+                // Java libraries
+                println("<====== JavaDoc For Java Library, Java Version: " + JavaVersion.current().getMajorVersion() + " ======>")
+
+                // 打包Java - javadoc.jar
+                task javaDocJar(type: Jar, dependsOn: javadoc) {
+                    println "<====== Java Library JavaDoc ======>"
+                    //noinspection GroovyAccessibility
+                    archiveClassifier = 'javadoc'
+                    from javadoc.destinationDir
+                }
+
+                // 设置任务依赖关系，打jar包的同时打源码包（非常重要！）
+                jar.dependsOn(javaSourcesJar)
+
+                // 如果是war包填写components.web，如果是jar包填写components.java
+                from components.java
+
+                // 闭包任务
+                artifacts {
+                    artifact(javaSourcesJar)
+                    artifact(javaDocJar)
+                }
+            }
+        }
+    }
+}
