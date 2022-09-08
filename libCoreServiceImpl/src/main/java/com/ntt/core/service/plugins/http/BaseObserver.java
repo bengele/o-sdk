@@ -9,8 +9,8 @@ import com.ntt.core.service.plugins.http.exception.ResponseExceptionListener;
 import com.ntt.core.service.plugins.http.exception.RxExceptionHandler;
 import com.ntt.core.service.plugins.http.exception.ServerException;
 
-import io.reactivex.rxjava3.core.Observer;
-import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
 
 
 public abstract class BaseObserver<T> implements Observer<BaseResp<T>> {

@@ -190,7 +190,7 @@ public class CoreServiceImpl {
             mAuth.clearAuthCache();
         }
         //缓存当前的host
-        //        MMKVUtil.getInstance().encode("CacheDomainHost", useHost);
+//                MMKVUtil.getInstance().encode("CacheDomainHost", useHost);
         SharePreferenceManager.encodeString("CacheDomainHost", useHost);
         String token = mAuth.getTokenFuture(false);
         //没有拿到token，强制获取

@@ -6,7 +6,7 @@ import com.ntt.core.service.plugins.http.BaseResp;
 
 import java.util.Map;
 
-import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.Observable;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.Header;

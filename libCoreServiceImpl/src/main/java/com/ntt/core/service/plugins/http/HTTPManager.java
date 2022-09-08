@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class HTTPManager {
@@ -37,7 +37,7 @@ public class HTTPManager {
 
         this.mRetrofit = new Retrofit.Builder()
                 .baseUrl(CoreServiceImpl.getInstance().getUseHost())
-                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())//使用rxjava
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())//使用rxjava
                 .addConverterFactory(GsonConverterFactory.create())//使用Gson
                 .client(mOkHttpClient)
                 .build();

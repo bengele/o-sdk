@@ -7,7 +7,6 @@ import com.ntt.core.service.classes.IBabyInfoCallback;
 import com.ntt.core.service.entities.SBabyInfoEntity;
 
 interface ICoreService {
-
     //获取版本号
     String getVersion();
 
@@ -49,4 +48,16 @@ interface ICoreService {
 
     //切换红茶的业务号
     int switchESIMCard();
+
+    int switchESIMProvisionCard();
+
+    //红茶业务号表
+    List<String> getESIMProfiles();
+
+    // 使能/关闭音效
+    void setSoundEffectEnable(int sessionId, boolean enable);
+    // 释放音效
+    void releaseSoundEffect(int sessionId);
+    // 设置不同的音效 type: equalization均衡， vocal人声, bass低音
+    void setSoundEffect(String type);
 }

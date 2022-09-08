@@ -33,10 +33,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void testClick(View view) {
+        long t = System.currentTimeMillis();
         String host = CoreServiceImpl.getInstance().getUseHost();
         String deviceId = CoreServiceImpl.getInstance().getDeviceId();
         String token = CoreServiceImpl.getInstance().forceRefreshToken();
         String token1 = CoreServiceImpl.getInstance().getToken();
+        long diff = System.currentTimeMillis() - t;
+        Log.d("testClick","耗时 = "+diff);
         deviceIdTv.setText(deviceId);
         hostTv.setText(host);
         tokenTv.setText(token);
