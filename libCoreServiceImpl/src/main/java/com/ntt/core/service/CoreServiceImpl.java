@@ -14,6 +14,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.blankj.utilcode.util.Utils;
+import com.ntt.core.service.plugins.http.DNSHelper;
 import com.ntt.core.service.plugins.sharePreference.SharePreferenceManager;
 import com.ntt.core.service.supports.auth.Auth;
 import com.ntt.core.service.supports.log.XLog;
@@ -81,6 +82,7 @@ public class CoreServiceImpl {
     private CoreServiceImpl(Context context, String appId, String appSecret, boolean debug) {
         this.mContext = context;
         this.isDebug = debug;
+        DNSHelper.init(context);
         //初始化MMKV
         //        MMKV.initialize(context);
         SharePreferenceManager.init(context);

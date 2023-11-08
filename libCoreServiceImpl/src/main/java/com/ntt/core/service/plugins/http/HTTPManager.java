@@ -27,7 +27,7 @@ public class HTTPManager {
     }
 
     private HTTPManager() {
-        this.mOkHttpClient = RetrofitUrlManager.getInstance().with(new OkHttpClient.Builder()) //RetrofitUrlManager 初始化
+        this.mOkHttpClient = RetrofitUrlManager.getInstance().with(new OkHttpClient.Builder().dns(DNSHelper.dns)) //RetrofitUrlManager 初始化
                 .readTimeout(3, TimeUnit.SECONDS)
                 .connectTimeout(3, TimeUnit.SECONDS)
                 .writeTimeout(3, TimeUnit.SECONDS)
